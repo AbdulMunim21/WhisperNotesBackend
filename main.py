@@ -6,8 +6,8 @@ app = Flask(__name__)
 
 # Load model and tokenizer globally (once on server start)
 try:
-    tokenizer = T5Tokenizer.from_pretrained("google/flan-t5-small")
-    model = T5ForConditionalGeneration.from_pretrained("google/flan-t5-small")
+    tokenizer = T5Tokenizer.from_pretrained("sshleifer/tiny-t5")
+    model = T5ForConditionalGeneration.from_pretrained("sshleifer/tiny-t5")
 except Exception as e:
     print(f"Error loading model: {e}")
     raise
@@ -60,4 +60,4 @@ print("Model and tokenizer loaded successfully.")
 if __name__ == "__main__":
     print("Starting Flask server...")
     app.run(host="0.0.0.0", port=8080)
-    
+
