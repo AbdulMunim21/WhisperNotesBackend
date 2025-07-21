@@ -1,33 +1,56 @@
 from flask import Flask, request, jsonify
 from transformers import T5Tokenizer, T5ForConditionalGeneration
+import torch
 
-# Initialize Flask app
 app = Flask(__name__)
 
-# Load pretrained T5 model and tokenizer once when server starts
-tokenizer = T5Tokenizer.from_pretrained("google/flan-t5-small")
-model = T5ForConditionalGeneration.from_pretrained("google/flan-t5-small")
+# Load model and tokenizer globally (once on server start)
+try:
+    tokenizer = T5Tokenizer.from_pretrained("google/flan-t5-small")
+    model = T5ForConditionalGeneration.from_pretrained("google/flan-t5-small")
+except Exception as e:
+    print(f"Error loading model: {e}")
+    raise
+
+# Optional: Health check route
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({"message": "Summarizer API is running!"})
 
 @app.route("/summarize", methods=["POST"])
 def summarize():
     data = request.get_json()
+
     if not data or "text" not in data:
         return jsonify({"error": "Missing 'text' in request"}), 400
 
-    input_text = "summarize the text i will provide + also return it in documented manner to make it look professional. This is the text input "+ data["text"]
+    user_text = data["text"].strip()
 
-    # Tokenize and generate summary
-    inputs = tokenizer(input_text, return_tensors="pt", max_length=512, truncation=True)
-    summary_ids = model.generate(
-        inputs.input_ids,
-        max_length=100,
-        num_beams=4,
-        early_stopping=True
+    if len(user_text) == 0:
+        return jsonify({"error": "Input text is empty"}), 400
+
+    # Clean and prepare input prompt
+    prompt = (
+        "summarize the following text in a professional and well-documented format: "
+        + user_text
     )
-    summary = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
 
-    return jsonify({"summary": summary})
+    try:
+        # Tokenize and summarize
+        inputs = tokenizer(prompt, return_tensors="pt", max_length=512, truncation=True)
+        summary_ids = model.generate(
+            inputs.input_ids,
+            max_length=150,  # slightly increased length
+            num_beams=4,
+            early_stopping=True
+        )
+        summary = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
 
-# Run the server
+        return jsonify({"summary": summary})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# Start server (use gunicorn in production)
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run()
