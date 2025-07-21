@@ -6,8 +6,8 @@ app = Flask(__name__)
 
 # Load model and tokenizer globally (once on server start)
 try:
-    tokenizer = T5Tokenizer.from_pretrained("sshleifer/tiny-t5")
-    model = T5ForConditionalGeneration.from_pretrained("sshleifer/tiny-t5")
+    tokenizer = T5Tokenizer.from_pretrained("t5-small")
+    model = T5ForConditionalGeneration.from_pretrained("t5-small")
 except Exception as e:
     print(f"Error loading model: {e}")
     raise
