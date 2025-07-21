@@ -15,10 +15,13 @@ except Exception as e:
 # Optional: Health check route
 @app.route("/", methods=["GET"])
 def home():
+    print("HOME API")
     return jsonify({"message": "Summarizer API is running!"})
 
 @app.route("/summarize", methods=["POST"])
 def summarize():
+    print("Summarize  API")
+
     data = request.get_json()
 
     if not data or "text" not in data:
@@ -51,6 +54,10 @@ def summarize():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+print("Model and tokenizer loaded successfully.")
+
 # Start server (use gunicorn in production)
 if __name__ == "__main__":
-    app.run()
+    print("Starting Flask server...")
+    app.run(host="0.0.0.0", port=8080)
+    
