@@ -37,7 +37,7 @@ def summarize():
 
     # Clean and prepare input prompt
     prompt = (
-        "summarize the following text in a professional and well-documented format: "
+        "Just include the summary and nothing else. summarize the following text in a professional and well-documented format: "
         + user_text
     )
 
