@@ -9,6 +9,8 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
     git \
+    unzip \
+    wget \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements file first to leverage Docker cache
@@ -17,11 +19,18 @@ COPY requirements.txt .
 # Install Python dependencies with prebuilt binaries
 RUN pip install --upgrade pip && pip install --prefer-binary -r requirements.txt
 
-# Copy the entire app
+# Download model from GitHub release and extract it
+RUN wget https://github.com/AbdulMunim21/WhisperNotesBackend/releases/download/v1.0/model.zip \
+    && unzip model.zip -d temp_model \
+    && mv temp_model/* model/ \
+    && rm -rf temp_model model.zip \
+    && ls -la model
+
+# Copy the rest of your application
 COPY . .
 
-# Expose port Gunicorn will run on
+# Expose port for Gunicorn
 EXPOSE 8080
 
-# Start with Gunicorn (entry point: main.app)
+# Run the Flask app with Gunicorn
 CMD ["gunicorn", "--bind", "0.0.0.0:8080", "main:app"]

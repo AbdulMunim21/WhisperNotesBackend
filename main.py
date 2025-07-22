@@ -1,26 +1,29 @@
 from flask import Flask, request, jsonify
 from transformers import T5Tokenizer, T5ForConditionalGeneration
-import torch
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 app = Flask(__name__)
 
 # Load model and tokenizer globally (once on server start)
 try:
-    tokenizer = T5Tokenizer.from_pretrained("t5-small")
-    model = T5ForConditionalGeneration.from_pretrained("t5-small")
+    tokenizer = T5Tokenizer.from_pretrained("./model")
+    model = T5ForConditionalGeneration.from_pretrained("./model")
 except Exception as e:
-    print(f"Error loading model: {e}")
+    logger.error(f"Error loading model: {e}")
     raise
 
 # Optional: Health check route
 @app.route("/", methods=["GET"])
 def home():
-    print("HOME API")
+    logger.info("HOME API")
     return jsonify({"message": "Summarizer API is running!"})
 
 @app.route("/summarize", methods=["POST"])
 def summarize():
-    print("Summarize  API")
+    logger.info("Summarize  API")
 
     data = request.get_json()
 
@@ -54,7 +57,7 @@ def summarize():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-print("Model and tokenizer loaded successfully.")
+logger.info("Model and tokenizer loaded successfully.")
 
 # Start server (use gunicorn in production)
 if __name__ == "__main__":
