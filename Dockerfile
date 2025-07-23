@@ -1,4 +1,3 @@
-# Use official Python image
 FROM python:3.11-slim
 
 # Set working directory inside the container
@@ -20,12 +19,13 @@ COPY requirements.txt .
 RUN pip install --upgrade pip && pip install --prefer-binary -r requirements.txt
 
 # Download model from GitHub release and extract it
-RUN wget https://github.com/AbdulMunim21/WhisperNotesBackend/releases/download/v1.0/model.zip \
-    && unzip model.zip -d temp_model \
-    && mkdir -p model \
-    && mv temp_model/* model/ \
-    && rm -rf temp_model model.zip \
-    && ls -la model
+RUN wget https://github.com/AbdulMunim21/WhisperNotesBackend/releases/download/v1.0/model.zip && \
+    unzip model.zip -d temp_model && \
+    # Find the actual model folder inside temp_model and move contents to ./model
+    mkdir -p model && \
+    find temp_model -mindepth 1 -maxdepth 1 -type d -exec cp -r {}/. model/ \; && \
+    rm -rf temp_model model.zip && \
+    echo "Model contents:" && ls -la model
 
 # Remove .venv if it exists (in case it was added to context)
 RUN rm -rf .venv
