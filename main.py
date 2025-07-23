@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from transformers import T5Tokenizer, T5ForConditionalGeneration
 import logging
 import os
+import torch
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -41,38 +42,48 @@ def home():
 
 @app.route("/summarize", methods=["POST"])
 def summarize():
-    logger.info("Summarize API")
-
-    data = request.get_json()
-
-    if not data or "text" not in data:
-        return jsonify({"error": "Missing 'text' in request"}), 400
-
-    user_text = data["text"].strip()
-
-    if len(user_text) == 0:
-        return jsonify({"error": "Input text is empty"}), 400
-
-    prompt = (
-        "Just include the summary and nothing else. summarize the following text in a professional and well-documented format: "
-        + user_text
-    )
+    logger.info("Summarize API called")
 
     try:
-        inputs = tokenizer(prompt, return_tensors="pt", max_length=512, truncation=True)
-        summary_ids = model.generate(
-            inputs.input_ids,
-            max_length=150,
-            num_beams=4,
-            early_stopping=True
-        )
-        summary = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
+        data = request.get_json()
+        if not data or "text" not in data:
+            return jsonify({"error": "Missing 'text' in request"}), 400
 
+        user_text = data["text"].strip()
+        if len(user_text) == 0:
+            return jsonify({"error": "Input text is empty"}), 400
+
+        # ✅ Correct T5 format
+        prompt = "summarize: " + user_text
+        logger.info(f"Prompt: {prompt}")
+
+        # Tokenize
+        inputs = tokenizer(
+            prompt, 
+            return_tensors="pt", 
+            max_length=256, 
+            truncation=True
+        )
+        logger.info(f"Input shape: {inputs.input_ids.shape}")
+
+        # Generate with safeguards
+        with torch.no_grad():
+            summary_ids = model.generate(
+                inputs.input_ids,
+                max_length=100,
+                num_beams=2,
+                early_stopping=True,
+                pad_token_id=tokenizer.pad_token_id
+            )
+
+        summary = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
+        logger.info("Summary generated successfully")
+        
         return jsonify({"summary": summary})
 
     except Exception as e:
-        logger.error(f"Generation error: {e}")
-        return jsonify({"error": str(e)}), 500
+        logger.error(f"Generation failed: {str(e)}", exc_info=True)
+        return jsonify({"error": "Failed to generate summary"}), 500
 
 if __name__ == "__main__":
     print("Starting Flask server...")
