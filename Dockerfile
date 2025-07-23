@@ -22,9 +22,13 @@ RUN pip install --upgrade pip && pip install --prefer-binary -r requirements.txt
 # Download model from GitHub release and extract it
 RUN wget https://github.com/AbdulMunim21/WhisperNotesBackend/releases/download/v1.0/model.zip \
     && unzip model.zip -d temp_model \
+    && mkdir -p model \
     && mv temp_model/* model/ \
     && rm -rf temp_model model.zip \
     && ls -la model
+
+# Remove .venv if it exists (in case it was added to context)
+RUN rm -rf .venv
 
 # Copy the rest of your application
 COPY . .
