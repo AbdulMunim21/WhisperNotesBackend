@@ -31,6 +31,7 @@ try:
     logger.info("Model and tokenizer loaded successfully.")
 except Exception as e:
     logger.error(f"Error loading model: {e}")
+    raise
 
 # Optional: Health check route
 @app.route("/", methods=["GET"])
