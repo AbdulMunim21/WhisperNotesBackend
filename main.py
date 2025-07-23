@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from transformers import T5Tokenizer, T5ForConditionalGeneration
+from transformers import BartTokenizer, BartForConditionalGeneration
 import logging
 import os
 import torch
@@ -27,9 +27,11 @@ else:
 
 # Load model and tokenizer globally (once on server start)
 try:
-    tokenizer = T5Tokenizer.from_pretrained(MODEL_PATH)
-    model = T5ForConditionalGeneration.from_pretrained(MODEL_PATH)
+    tokenizer = BartTokenizer.from_pretrained(MODEL_PATH)
+    model = BartForConditionalGeneration.from_pretrained(MODEL_PATH)
     logger.info("Model and tokenizer loaded successfully.")
+    logger.info(f"Model type: {type(model)}")
+    logger.info(f"Tokenizer vocab size: {len(tokenizer)}")
 except Exception as e:
     logger.error(f"Error loading model: {e}")
     raise
@@ -42,48 +44,68 @@ def home():
 
 @app.route("/summarize", methods=["POST"])
 def summarize():
-    logger.info("Summarize API called")
+    logger.info("=== Summarize API called ===")
 
     try:
         data = request.get_json()
-        if not data or "text" not in data:
+        if "text" not in data:
+            logger.error("Missing 'text' in request")
             return jsonify({"error": "Missing 'text' in request"}), 400
 
         user_text = data["text"].strip()
         if len(user_text) == 0:
+            logger.error("Input text is empty")
             return jsonify({"error": "Input text is empty"}), 400
 
-        # ✅ Correct T5 format
+        logger.info(f"Input text length: {len(user_text)} characters")
+
+        # ✅ T5 requires task prefix
         prompt = "summarize: " + user_text
-        logger.info(f"Prompt: {prompt}")
+        logger.info(f"Prompt: {prompt[:100]}...")  # Log first 100 chars
 
-        # Tokenize
+        # Tokenize with conservative limits for tiny model
         inputs = tokenizer(
-            prompt, 
+            user_text, 
             return_tensors="pt", 
-            max_length=256, 
-            truncation=True
+            max_length=256,         # Optimal for this model size
+            truncation=True,
+            padding=True
         )
-        logger.info(f"Input shape: {inputs.input_ids.shape}")
+        logger.info(f"Input tensor shape: {inputs.input_ids.shape}")
 
-        # Generate with safeguards
+        # Generate with lightweight settings
+        logger.info("Starting model generation...")
         with torch.no_grad():
             summary_ids = model.generate(
                 inputs.input_ids,
-                max_length=100,
-                num_beams=2,
+                max_length=100,         # Reasonable output length
+                min_length=20,          # Ensure meaningful summary
+                num_beams=2,            # Light beam search
                 early_stopping=True,
-                pad_token_id=tokenizer.pad_token_id
+                length_penalty=2.0,     # Encourage good length
+                no_repeat_ngram_size=3, # Prevent repetition
+                pad_token_id=tokenizer.pad_token_id,
+                eos_token_id=tokenizer.eos_token_id
             )
-
         summary = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
-        logger.info("Summary generated successfully")
+        summary = summary.strip()
         
+        logger.info("Summary generated successfully")
+        logger.info(f"Summary length: {len(summary)} characters")
+
+        # Validate summary
+        if not summary or len(summary) < 5:
+            logger.warning("Generated empty or very short summary")
+            summary = "Unable to generate a meaningful summary. The input text may be too short or complex."
+
         return jsonify({"summary": summary})
 
     except Exception as e:
-        logger.error(f"Generation failed: {str(e)}", exc_info=True)
-        return jsonify({"error": "Failed to generate summary"}), 500
+        logger.error(f"=== GENERATION FAILED ===")
+        logger.error(f"Error type: {type(e).__name__}")
+        logger.error(f"Error message: {str(e)}")
+        logger.error("Full traceback:", exc_info=True)
+        return jsonify({"error": f"Failed to generate summary: {str(e)}"}), 500
 
 if __name__ == "__main__":
     print("Starting Flask server...")

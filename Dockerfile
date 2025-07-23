@@ -19,7 +19,7 @@ COPY requirements.txt .
 RUN pip install --upgrade pip && pip install --prefer-binary -r requirements.txt
 
 # Download model from GitHub release and extract it
-RUN wget https://github.com/AbdulMunim21/WhisperNotesBackend/releases/download/v1.1/model.zip && \
+RUN wget https://github.com/AbdulMunim21/WhisperNotesBackend/releases/download/v1.3/model.zip && \
     unzip model.zip -d temp_model && \
     # Find the actual model folder inside temp_model and move contents to ./model
     mkdir -p model && \
