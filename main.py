@@ -15,6 +15,7 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+print("API Key loaded:", os.getenv('OPENAI_API_KEY')[:10] if os.getenv('OPENAI_API_KEY') else "None")
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
 app = Flask(__name__)
