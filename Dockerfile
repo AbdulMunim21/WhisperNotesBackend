@@ -25,7 +25,7 @@ RUN pip install --upgrade pip && pip install --prefer-binary -r requirements.txt
 # RUN python -c "import nltk; nltk.download('punkt', download_dir='/usr/share/nltk_data'); nltk.download('punkt_tab', download_dir='/usr/share/nltk_data')"
 
 # Download model from GitHub release and extract it
-RUN wget https://github.com/AbdulMunim21/WhisperNotesBackend/releases/download/v1.3/model.zip && \
+RUN wget https://github.com/AbdulMunim21/WhisperNotesBackend/releases/download/v1.4/model.zip && \
     unzip model.zip -d temp_model && \
     # Find the actual model folder inside temp_model and move contents to ./model
     mkdir -p model && \
