@@ -8,16 +8,21 @@ import logging
 import os
 from openai import OpenAI
 
-from dotenv import load_dotenv
-load_dotenv()
+#from dotenv import load_dotenv
+#load_dotenv()
 
+
+api_key = os.getenv('OPENAI_API_KEY')
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-print("API Key loaded:", os.getenv('OPENAI_API_KEY')[:10] if os.getenv('OPENAI_API_KEY') else "None")
-client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+logger.info("API Key loaded:", api_key[:10] if api_key else "None")
 
+if not api_key:
+    raise RuntimeError("Missing OPENAI_API_KEY environment variable!")
+
+client = OpenAI(api_key=api_key)
 app = Flask(__name__)
 
 # Initialize summarizer components
