@@ -1,28 +1,46 @@
 from flask import Flask, request, jsonify
-from sumy.parsers.plaintext import PlaintextParser
-from sumy.nlp.tokenizers import Tokenizer
-from sumy.summarizers.text_rank import TextRankSummarizer
-from sumy.nlp.stemmers import Stemmer
-from sumy.utils import get_stop_words
+from transformers import BartTokenizer, BartForConditionalGeneration
 import logging
+import os
+import torch
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-# Initialize summarizer components
-stemmer = Stemmer("english")
-summarizer = TextRankSummarizer(stemmer)
-summarizer.stop_words = get_stop_words("english")
+logger.info("Files in current directory:")
+for item in os.listdir('.'):
+    logger.info(f" - {item}")
 
-logger.info("Sumy summarizer initialized successfully.")
+# Resolve model path relative to this file
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "model")
 
-# Health check route
+# Debug: Print model contents
+logger.info("Checking model folder contents...")
+if os.path.exists(MODEL_PATH):
+    logger.info(f"Model folder exists: {MODEL_PATH}")
+    for item in os.listdir(MODEL_PATH):
+        logger.info(f" - {item}")
+else:
+    logger.error(f"Model folder does NOT exist: {MODEL_PATH}")
+
+# Load model and tokenizer globally (once on server start)
+try:
+    tokenizer = BartTokenizer.from_pretrained(MODEL_PATH)
+    model = BartForConditionalGeneration.from_pretrained(MODEL_PATH)
+    logger.info("Model and tokenizer loaded successfully.")
+    logger.info(f"Model type: {type(model)}")
+    logger.info(f"Tokenizer vocab size: {len(tokenizer)}")
+except Exception as e:
+    logger.error(f"Error loading model: {e}")
+    raise
+
+# Optional: Health check route
 @app.route("/", methods=["GET"])
 def home():
     logger.info("HOME API")
-    return jsonify({"message": "Sumy Summarizer API is running!"})
+    return jsonify({"message": "Summarizer API is running!"})
 
 @app.route("/summarize", methods=["POST"])
 def summarize():
@@ -41,12 +59,35 @@ def summarize():
 
         logger.info(f"Input text length: {len(user_text)} characters")
 
-        # Parse and summarize text
-        parser = PlaintextParser.from_string(user_text, Tokenizer("english"))
-        
-        # Generate summary (default 3 sentences)
-        summary_sentences = summarizer(parser.document, 3)
-        summary = " ".join([str(sentence) for sentence in summary_sentences])
+        # ✅ T5 requires task prefix
+        prompt = "summarize: " + user_text
+        logger.info(f"Prompt: {prompt[:100]}...")  # Log first 100 chars
+
+        # Tokenize with conservative limits for tiny model
+        inputs = tokenizer(
+            user_text, 
+            return_tensors="pt", 
+            max_length=256,         # Optimal for this model size
+            truncation=True,
+            padding=True
+        )
+        logger.info(f"Input tensor shape: {inputs.input_ids.shape}")
+
+        # Generate with lightweight settings
+        logger.info("Starting model generation...")
+        with torch.no_grad():
+            summary_ids = model.generate(
+                inputs.input_ids,
+                max_length=100,         # Reasonable output length
+                min_length=20,          # Ensure meaningful summary
+                num_beams=2,            # Light beam search
+                early_stopping=True,
+                length_penalty=2.0,     # Encourage good length
+                no_repeat_ngram_size=3, # Prevent repetition
+                pad_token_id=tokenizer.pad_token_id,
+                eos_token_id=tokenizer.eos_token_id
+            )
+        summary = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
         summary = summary.strip()
         
         logger.info("Summary generated successfully")
@@ -55,7 +96,16 @@ def summarize():
         # Validate summary
         if not summary or len(summary) < 5:
             logger.warning("Generated empty or very short summary")
-            summary = "Unable to generate a meaningful summary. The input text may be too short."
+            summary = "Unable to generate a meaningful summary. The input text may be too short or complex."
+            
+        import psutil
+        import os
+
+# Get memory usage of current process
+        process = psutil.Process(os.getpid())
+        memory_info = process.memory_info()
+        memory_gb = memory_info.rss / 1024**3  # rss = Resident Set Size
+        print(f"Current program memory usage: {memory_gb:.3f} GB")
 
         return jsonify({"summary": summary})
 
@@ -67,5 +117,5 @@ def summarize():
         return jsonify({"error": f"Failed to generate summary: {str(e)}"}), 500
 
 if __name__ == "__main__":
-    print("Starting Flask server with Sumy...")
+    print("Starting Flask server...")
     app.run(host="0.0.0.0", port=8080)
