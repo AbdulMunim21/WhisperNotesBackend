@@ -71,11 +71,12 @@ def summarize():
         with torch.no_grad():
             summary_ids = model.generate(
                 input_ids,
-                max_length=100,
+                max_length=50,
                 min_length=20,
                 num_beams=2,
+                do_sample=False,
                 early_stopping=True,
-                length_penalty=2.0,
+                length_penalty=2.0,        
                 no_repeat_ngram_size=3,
                 pad_token_id=tokenizer.pad_token_id,
                 eos_token_id=tokenizer.eos_token_id
