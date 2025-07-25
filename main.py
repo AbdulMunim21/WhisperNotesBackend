@@ -5,6 +5,8 @@ from sumy.summarizers.text_rank import TextRankSummarizer
 from sumy.nlp.stemmers import Stemmer
 from sumy.utils import get_stop_words
 import logging
+import psutil
+import os
 
 # === Logging Setup ===
 logging.basicConfig(level=logging.INFO)
