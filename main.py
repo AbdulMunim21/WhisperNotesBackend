@@ -8,8 +8,8 @@ import logging
 import os
 from openai import OpenAI
 
-#from dotenv import load_dotenv
-#load_dotenv()
+# from dotenv import load_dotenv
+# load_dotenv()
 
 
 api_key = os.getenv('OPENAI_API_KEY')
@@ -17,7 +17,7 @@ api_key = os.getenv('OPENAI_API_KEY')
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-logger.info("API Key loaded:", api_key[:10] if api_key else "None")
+print("API Key loaded:", api_key[:10] if api_key else "None")
 
 if not api_key:
     raise RuntimeError("Missing OPENAI_API_KEY environment variable!")
@@ -30,7 +30,7 @@ app = Flask(__name__)
 # summarizer = TextRankSummarizer(stemmer)
 # summarizer.stop_words = get_stop_words("english")
 
-logger.info("Sumy summarizer initialized successfully.")
+# logger.info("Sumy summarizer initialized successfully.")
 
 # Health check route
 @app.route("/", methods=["GET"])
