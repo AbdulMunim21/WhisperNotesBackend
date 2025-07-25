@@ -34,4 +34,4 @@ EXPOSE 8080
 
 # Run the Flask app with Gunicorn
 # Railway automatically sets the PORT environment variable
-CMD gunicorn --bind 0.0.0.0:$PORT main:app
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "main:app"]
